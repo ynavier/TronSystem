@@ -1,0 +1,218 @@
+<div class="tron-bg">
+
+  <!-- Toast -->
+  <div class="toast" *ngIf="toast" [ngClass]="'toast-' + toast.type">
+    <span class="toast-icon">{{ toast.type === 'success' ? '✔' : '✖' }}</span>
+    {{ toast.msg }}
+  </div>
+
+  <!-- Header -->
+  <div class="header">
+    <a routerLink="/" class="btn-back">← SALIR</a>
+    <div class="logo-row">
+      <span class="logo-icon">⬡</span>
+      <span class="logo-text">TRON INVENTORY</span>
+    </div>
+    <div class="subtitle">// Sistema de gestión de inventario tecnológico v3.0.7</div>
+  </div>
+
+  <!-- Stats -->
+  <div class="stats-row">
+    <div class="stat-card">
+      <div class="stat-label">PRODUCTOS</div>
+      <div class="stat-value">{{ products.length }}</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">UNIDADES TOTALES</div>
+      <div class="stat-value">{{ totalUnidades }}</div>
+    </div>
+    <div class="stat-card wide">
+      <div class="stat-label">VALOR DEL INVENTARIO</div>
+      <div class="stat-value">{{ valorTotal | currency:'USD':'symbol':'1.2-2' }}</div>
+    </div>
+  </div>
+
+  <!-- Filtros -->
+  <div class="filters-row">
+    <div class="search-box">
+      <span class="search-icon">⌕</span>
+      <input [(ngModel)]="searchTerm" (ngModelChange)="applyFilter()" placeholder="Buscar por nombre..." />
+    </div>
+    <select [(ngModel)]="filterCategoria" (ngModelChange)="applyFilter()" class="filter-select">
+      <option value="">Todas las categorías</option>
+      <option *ngFor="let c of categories" [value]="c">{{ c }}</option>
+    </select>
+    <input [(ngModel)]="filterPrecioMin" (ngModelChange)="applyFilter()" type="number" placeholder="Precio mín." class="filter-input" />
+    <input [(ngModel)]="filterPrecioMax" (ngModelChange)="applyFilter()" type="number" placeholder="Precio máx." class="filter-input" />
+    <button class="btn-clear" (click)="clearFilters()">✕ LIMPIAR</button>
+    <button class="btn-new" (click)="openNew()">+ NUEVO PRODUCTO</button>
+  </div>
+
+  <!-- Loading -->
+  <div class="loading-row" *ngIf="loading">
+    <span class="loading-text">// CARGANDO DATOS DEL SISTEMA...</span>
+  </div>
+
+  <!-- Table -->
+  <div class="table-wrap" *ngIf="!loading">
+    <table>
+      <thead>
+        <tr>
+          <th>NOMBRE</th>
+          <th>CATEGORÍA</th>
+          <th>PRECIO</th>
+          <th>STOCK</th>
+          <th>ESTADO</th>
+          <th>ACCIONES</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr *ngFor="let p of filtered">
+          <td class="td-name td-name-link" (click)="openView(p)">{{ p.nombre }}</td>
+          <td class="td-cat">{{ p.categoria }}</td>
+          <td class="td-price">{{ p.precio | currency:'USD':'symbol':'1.2-2' }}</td>
+          <td>{{ p.cantidad }}</td>
+          <td>
+            <span class="badge" [ngClass]="{
+              'badge-active': getEstado(p) === 'Activo',
+              'badge-low':    getEstado(p) === 'Stock Bajo',
+              'badge-disc':   getEstado(p) === 'Descontinuado'
+            }">● {{ getEstado(p) | uppercase }}</span>
+          </td>
+          <td class="td-actions">
+            <button class="icon-btn edit" (click)="openEdit(p)" title="Editar">✎</button>
+            <button class="icon-btn del" (click)="openDelete(p)" title="Eliminar">🗑</button>
+          </td>
+        </tr>
+        <tr *ngIf="filtered.length === 0">
+          <td colspan="6" class="empty-row">// SIN RESULTADOS</td>
+        </tr>
+      </tbody>
+    </table>
+    <div class="end-line">END OF LINE</div>
+  </div>
+
+  <!-- Modal Nuevo/Editar -->
+  <div class="overlay" *ngIf="showModal">
+    <div class="overlay-backdrop" (click)="closeModal()"></div>
+    <div class="modal">
+      <div class="modal-header">
+        <span>// {{ isEdit ? 'EDITAR PRODUCTO' : 'NUEVO PRODUCTO' }}</span>
+        <button class="close-btn" (click)="closeModal()">✕</button>
+      </div>
+      <div class="form-group">
+        <label>NOMBRE</label>
+        <input [(ngModel)]="currentProduct.nombre" class="tron-input" placeholder="Nombre del producto" />
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label>CATEGORÍA</label>
+          <select [(ngModel)]="currentProduct.categoria" class="tron-input">
+            <option *ngFor="let c of categories" [value]="c">{{ c }}</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>ESTADO</label>
+          <select class="tron-input">
+            <option>Activo</option>
+            <option>Stock Bajo</option>
+            <option>Descontinuado</option>
+          </select>
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label>PRECIO ($)</label>
+          <input [(ngModel)]="currentProduct.precio" type="number" class="tron-input" />
+        </div>
+        <div class="form-group">
+          <label>STOCK</label>
+          <input [(ngModel)]="currentProduct.cantidad" type="number" class="tron-input" />
+        </div>
+      </div>
+      <div class="form-group">
+        <label>DESCRIPCIÓN</label>
+        <input [(ngModel)]="currentProduct.descripcion" class="tron-input" placeholder="Descripción opcional" />
+      </div>
+      <div class="modal-footer">
+        <button class="btn-cancel" (click)="closeModal()">CANCELAR</button>
+        <button class="btn-confirm" (click)="save()">{{ isEdit ? 'ACTUALIZAR' : 'CREAR' }}</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal Eliminar -->
+  <div class="overlay" *ngIf="showDeleteModal">
+    <div class="overlay-backdrop" (click)="closeDelete()"></div>
+    <div class="modal modal-delete">
+      <div class="modal-header">
+        <span>// CONFIRMAR ELIMINACIÓN</span>
+        <button class="close-btn" (click)="closeDelete()">✕</button>
+      </div>
+      <p class="delete-msg">
+        ¿Estás seguro de eliminar <strong>{{ productToDelete?.nombre }}</strong> del sistema? Esta acción no se puede deshacer.
+      </p>
+      <div class="modal-footer">
+        <button class="btn-cancel" (click)="closeDelete()">CANCELAR</button>
+        <button class="btn-delete" (click)="confirmDelete()">ELIMINAR</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal Ver Detalle -->
+  <div class="overlay" *ngIf="showViewModal">
+    <div class="overlay-backdrop" (click)="closeView()"></div>
+    <div class="modal modal-view">
+      <div class="modal-header">
+        <span>// DETALLE DEL PRODUCTO</span>
+        <button class="close-btn" (click)="closeView()">✕</button>
+      </div>
+
+      <div class="detail-name">{{ productToView?.nombre }}</div>
+
+      <div class="detail-grid">
+        <div class="detail-item">
+          <span class="detail-label">CATEGORÍA</span>
+          <span class="detail-value">{{ productToView?.categoria }}</span>
+        </div>
+        <div class="detail-item">
+          <span class="detail-label">ESTADO</span>
+          <span class="badge" [ngClass]="{
+            'badge-active': getEstado(productToView!) === 'Activo',
+            'badge-low':    getEstado(productToView!) === 'Stock Bajo',
+            'badge-disc':   getEstado(productToView!) === 'Descontinuado'
+          }">● {{ getEstado(productToView!) | uppercase }}</span>
+        </div>
+        <div class="detail-item">
+          <span class="detail-label">PRECIO</span>
+          <span class="detail-value highlight">{{ productToView?.precio | currency:'USD':'symbol':'1.2-2' }}</span>
+        </div>
+        <div class="detail-item">
+          <span class="detail-label">STOCK</span>
+          <span class="detail-value">{{ productToView?.cantidad }} unidades</span>
+        </div>
+        <div class="detail-item">
+          <span class="detail-label">VALOR TOTAL EN STOCK</span>
+          <span class="detail-value highlight">
+            {{ (productToView?.precio || 0) * (productToView?.cantidad || 0) | currency:'USD':'symbol':'1.2-2' }}
+          </span>
+        </div>
+        <div class="detail-item">
+          <span class="detail-label">ID</span>
+          <span class="detail-value detail-id">{{ productToView?._id }}</span>
+        </div>
+      </div>
+
+      <div class="detail-desc-block">
+        <span class="detail-label">DESCRIPCIÓN</span>
+        <p class="detail-desc">{{ productToView?.descripcion || '// Sin descripción registrada' }}</p>
+      </div>
+
+      <div class="modal-footer">
+        <button class="btn-cancel" (click)="closeView()">CERRAR</button>
+        <button class="btn-confirm" (click)="closeView(); openEdit(productToView!)">EDITAR</button>
+      </div>
+    </div>
+  </div>
+
+</div>
