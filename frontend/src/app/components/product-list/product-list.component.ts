@@ -123,26 +123,32 @@ export class ProductListComponent implements OnInit {
   }
 
   save(): void {
-    if (this.isEdit && this.currentProduct._id) {
-      this.productService.update(this.currentProduct._id, this.currentProduct).subscribe({
-        next: () => {
-          this.closeModal();
-          this.loadProducts();
-          this.showToast('Producto actualizado correctamente', 'success');
-        },
-        error: () => this.showToast('Error al actualizar el producto', 'error')
-      });
-    } else {
-      this.productService.create(this.currentProduct).subscribe({
-        next: () => {
-          this.closeModal();
-          this.loadProducts();
-          this.showToast('Producto creado correctamente', 'success');
-        },
-        error: () => this.showToast('Error al crear el producto', 'error')
-      });
-    }
+  if (this.isEdit && this.currentProduct._id) {
+    this.productService.update(this.currentProduct._id, this.currentProduct).subscribe({
+      next: () => {
+        this.closeModal();
+        this.loadProducts();
+        this.showToast('Producto actualizado correctamente', 'success');
+      },
+      error: (e) => {
+        const msg = e.error?.msg || 'Error al actualizar el producto';
+        this.showToast(msg, 'error');
+      }
+    });
+  } else {
+    this.productService.create(this.currentProduct).subscribe({
+      next: () => {
+        this.closeModal();
+        this.loadProducts();
+        this.showToast('Producto creado correctamente', 'success');
+      },
+      error: (e) => {
+        const msg = e.error?.msg || 'Error al crear el producto';
+        this.showToast(msg, 'error');
+      }
+    });
   }
+}
 
   openDelete(p: Product): void {
     this.productToDelete = p;
